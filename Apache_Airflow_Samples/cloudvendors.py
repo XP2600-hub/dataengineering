@@ -8,6 +8,8 @@ import requests
 
 from airflow.sdk import dag, task, get_current_context
 
+from history_chart import create_history_chart
+
 OUTPUT_DIR = Path("/tmp/wikipedia")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -98,6 +100,7 @@ def wikipedia_pageviews():
 
         with open(txt_file, encoding="utf-8", errors="ignore") as f:
             for line in f:
+
                 parts = line.strip().split()
 
                 if len(parts) < 3:
@@ -138,7 +141,13 @@ def wikipedia_pageviews():
 
         return str(csv_file)
 
+    @task
+    def build_history_chart(csv_file):
+        create_history_chart()
+        return csv_file
+
     csv_result = count_views(unzip(download()))
+    build_history_chart(csv_result)
 
 
 wikipedia_pageviews()
