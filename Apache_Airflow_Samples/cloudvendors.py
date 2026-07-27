@@ -6,7 +6,7 @@ from pathlib import Path
 import pendulum
 import requests
 
-from airflow.decorators import dag, task
+from airflow.decorators import dag, task, get_current_context
 
 OUTPUT_DIR = Path("/tmp/wikipedia")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -32,7 +32,9 @@ def wikipedia_pageviews():
     @task(retries=3)
     def download():
 
-        logical_date = pendulum.now("UTC").subtract(days=1)
+        # Get the logical execution date from Airflow
+        context = get_current_context()
+        logical_date = context["logical_date"]
 
         year = logical_date.strftime("%Y")
         month = logical_date.strftime("%Y-%m")
