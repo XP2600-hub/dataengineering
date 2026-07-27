@@ -9,7 +9,7 @@ import requests
 from airflow.decorators import dag, task
 
 OUTPUT_DIR = Path("/tmp/wikipedia")
-OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 USER_AGENT = "airflow-tutorial/1.0 (example@example.com)"
 
@@ -45,19 +45,23 @@ def wikipedia_pageviews():
 
         outfile = OUTPUT_DIR / f"pageviews-{timestamp}.gz"
 
+        if outfile.exists():
+            print(f"{outfile} already exists. Skipping download.")
+            return str(outfile)
+
         print(f"Downloading {url}")
 
-        r = requests.get(
+        response = requests.get(
             url,
             headers={"User-Agent": USER_AGENT},
             timeout=120,
             stream=True,
         )
 
-        r.raise_for_status()
+        response.raise_for_status()
 
         with open(outfile, "wb") as f:
-            for chunk in r.iter_content(1024 * 1024):
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
                 if chunk:
                     f.write(chunk)
 
@@ -68,15 +72,19 @@ def wikipedia_pageviews():
     @task
     def unzip(gz_file):
 
-        txt = gz_file[:-3]
+        txt_file = Path(gz_file).with_suffix("")
+
+        if txt_file.exists():
+            print(f"{txt_file} already exists. Skipping extraction.")
+            return str(txt_file)
 
         with gzip.open(gz_file, "rb") as src:
-            with open(txt, "wb") as dst:
+            with open(txt_file, "wb") as dst:
                 shutil.copyfileobj(src, dst)
 
-        print(f"Extracted {txt}")
+        print(f"Extracted {txt_file}")
 
-        return txt
+        return str(txt_file)
 
     @task
     def count_views(txt_file):
@@ -88,7 +96,6 @@ def wikipedia_pageviews():
         }
 
         with open(txt_file, encoding="utf-8", errors="ignore") as f:
-
             for line in f:
 
                 parts = line.strip().split()
@@ -112,7 +119,8 @@ def wikipedia_pageviews():
 
                 results[PAGES[page]] = views
 
-        csv_file = OUTPUT_DIR / "cloud_pageviews.csv"
+        timestamp = Path(txt_file).stem
+        csv_file = OUTPUT_DIR / f"{timestamp}.csv"
 
         with open(csv_file, "w", newline="") as f:
             writer = csv.writer(f)
@@ -124,13 +132,13 @@ def wikipedia_pageviews():
         print("\nCloud Provider Page Views\n")
 
         for provider, views in results.items():
-            print(f"{provider:8} {views:,}")
+            print(f"{provider:8}: {views:,}")
 
         print(f"\nCSV written to {csv_file}")
 
-        return results
+        return str(csv_file)
 
-    count_views(unzip(download()))
+    csv_result = count_views(unzip(download()))
 
 
 wikipedia_pageviews()
