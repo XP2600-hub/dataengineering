@@ -21,7 +21,7 @@ PAGES = {
 
 
 @dag(
-    dag_id="wikipedia_cloudproviders",
+    dag_id="wikipedia_cloudvendors",
     schedule="@daily",
     start_date=pendulum.datetime(2026, 1, 1, tz="UTC"),
     catchup=False,
