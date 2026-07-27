@@ -1,3 +1,7 @@
+import sys
+
+sys.path.insert(0, "/root/airflow/dags")
+
 import csv
 import gzip
 import shutil
